@@ -1,0 +1,13 @@
+robot_bringup:
+  ros__parameters:
+    use_sim_time: true
+    base_frame: base_link
+    lidar_frame: laser
+    imu_frame: imu_link
+    odom_frame: odom
+    scan_topic: /scan_raw
+    filtered_scan_topic: /scan
+    imu_topic: /imu/data
+    odom_topic: /odom
+    joint_states_topic: /joint_states
+    cmd_vel_topic: /cmd_vel

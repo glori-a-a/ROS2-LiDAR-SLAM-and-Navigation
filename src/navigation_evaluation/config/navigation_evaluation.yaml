@@ -1,0 +1,7 @@
+navigation_evaluation:
+  ros__parameters:
+    run_name: phase1_placeholder
+    odom_topic: /odom
+    cmd_vel_topic: /cmd_vel
+    goal_topic: /goal_pose
+    metrics_output_directory: evaluations

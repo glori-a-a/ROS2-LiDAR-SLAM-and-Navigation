@@ -1,0 +1,7 @@
+icp_odometry:
+  ros__parameters:
+    scan_topic: /scan
+    odom_topic: /odom
+    base_frame: base_link
+    odom_frame: odom
+    publish_tf: true

@@ -1,0 +1,6 @@
+noise_injection:
+  ros__parameters:
+    range_noise_std: 0.0
+    dropout_probability: 0.0
+    output_topic: /scan
+    random_seed: 0
