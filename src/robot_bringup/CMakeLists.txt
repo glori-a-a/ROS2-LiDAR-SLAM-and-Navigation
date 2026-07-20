@@ -16,6 +16,7 @@ install(PROGRAMS
   scripts/validate_simulation.py
   scripts/send_test_velocity.py
   scripts/mapping_explore.py
+  scripts/nav_three_goals.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

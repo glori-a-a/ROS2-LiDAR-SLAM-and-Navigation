@@ -64,6 +64,7 @@ sudo apt install \
   ros-humble-geometry-msgs \
   ros-humble-slam-toolbox \
   ros-humble-nav2-map-server \
+  ros-humble-nav2-bringup \
   ros-humble-teleop-twist-keyboard \
   python3-numpy
 ```
@@ -134,6 +135,39 @@ Check `/map`, `map -> odom`, and `/scan` subscribers:
 ros2 topic echo /map --once
 ros2 run tf2_ros tf2_echo map odom
 ros2 topic info /scan -v
+```
+
+## Phase 5 — Saved-map localisation and Nav2
+
+Uses the saved map in `slam_navigation/maps/indoor_test.yaml` (not live SLAM).
+AMCL publishes `map -> odom`; Gazebo still publishes `odom -> base_link`.
+
+```bash
+ros2 launch slam_navigation navigation.launch.py
+ros2 launch slam_navigation navigation.launch.py headless:=false
+ros2 launch slam_navigation navigation.launch.py map:=/full/path/to/map.yaml
+```
+
+Set initial pose in RViz (**2D Pose Estimate**) or:
+
+```bash
+ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped "..."
+```
+
+Send goals from RViz (**Nav2 Goal**) or run three scripted goals:
+
+```bash
+ros2 run robot_bringup nav_three_goals.py
+```
+
+Verify:
+
+```bash
+ros2 lifecycle get /map_server
+ros2 lifecycle get /amcl
+ros2 topic echo /plan --once
+ros2 topic info /cmd_vel -v
+ros2 run tf2_ros tf2_echo map odom
 ```
 
 ## Expected Topics
@@ -229,8 +263,7 @@ ros2 run robot_bringup send_test_velocity.py --ros-args -p linear_x:=0.1 -p dura
 
 ## Current Limitations
 
-- No saved-map AMCL localisation or Nav2 navigation yet (Phase 5).
-- No EKF or IMU/wheel fusion.
+- No EKF or IMU/wheel fusion yet (Phase 6).
 - No ICP odometry implementation.
 - The robot model is intentionally simple and meant for quick sensor/TF bringup tests.
 
