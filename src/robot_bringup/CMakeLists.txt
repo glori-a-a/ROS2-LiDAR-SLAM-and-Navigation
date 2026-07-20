@@ -15,6 +15,7 @@ install(PROGRAMS
   scripts/scan_relay.py
   scripts/validate_simulation.py
   scripts/send_test_velocity.py
+  scripts/mapping_explore.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

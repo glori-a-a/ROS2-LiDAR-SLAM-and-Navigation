@@ -2,7 +2,15 @@
 
 This ROS2 Humble workspace contains a small mobile-robot simulation bringup plus placeholders for later SLAM, sensor-fusion, odometry, navigation, and evaluation phases.
 
-Phase 3 adds a working Gazebo Classic differential-drive robot simulation. SLAM, EKF, ICP odometry, AMCL, Nav2, and autonomous navigation are not implemented in this phase.
+Phase 3 adds a working Gazebo Classic differential-drive robot simulation. Phase 4 adds online 2D mapping with `slam_toolbox`. AMCL, Nav2, EKF, and custom ICP odometry are planned in later phases.
+
+## Demo
+
+Indoor simulation preview (map, robot motion, and `/scan`):
+
+![Indoor LiDAR simulation demo](outputs/simulation_demo.gif)
+
+Additional outputs (PNG, MP4) are in [`outputs/`](outputs/).
 
 ![Indoor LiDAR simulation demo](outputs/simulation_demo.gif)
 
@@ -20,7 +28,7 @@ Reserved for a later ICP odometry implementation. It is configured to consume `/
 
 ### slam_navigation
 
-Reserved for later SLAM and navigation launch/configuration. It is configured to consume `/scan` but does not implement SLAM, AMCL, or Nav2 yet.
+Online 2D mapping with `slam_toolbox` (`mapping.launch.py`). Saved-map AMCL and Nav2 are planned for Phase 5.
 
 ### navigation_evaluation
 
@@ -54,6 +62,9 @@ sudo apt install \
   ros-humble-nav-msgs \
   ros-humble-sensor-msgs \
   ros-humble-geometry-msgs \
+  ros-humble-slam-toolbox \
+  ros-humble-nav2-map-server \
+  ros-humble-teleop-twist-keyboard \
   python3-numpy
 ```
 
@@ -95,6 +106,36 @@ Useful launch arguments:
 - `robot_y`, default `0.0`
 - `robot_yaw`, default `0.0`
 
+## Phase 4 — Online mapping (slam_toolbox)
+
+```bash
+ros2 launch slam_navigation mapping.launch.py
+ros2 launch slam_navigation mapping.launch.py headless:=false
+ros2 launch slam_navigation mapping.launch.py use_scan_noise:=true
+```
+
+Drive while mapping:
+
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+# or
+ros2 run robot_bringup mapping_explore.py
+```
+
+Save map (while mapping is running):
+
+```bash
+ros2 run nav2_map_server map_saver_cli -f src/slam_navigation/maps/indoor_test
+```
+
+Check `/map`, `map -> odom`, and `/scan` subscribers:
+
+```bash
+ros2 topic echo /map --once
+ros2 run tf2_ros tf2_echo map odom
+ros2 topic info /scan -v
+```
+
 ## Expected Topics
 
 - `/scan_raw`: raw Gazebo LaserScan
@@ -123,6 +164,18 @@ Drive odom    -> odom -> base_link
 
 ## Expected TF Tree
 
+Mapping mode:
+
+```text
+map
+  `-- odom
+      `-- base_link
+          |-- laser
+          `-- imu_link
+```
+
+Simulation only (no SLAM):
+
 ```text
 odom
   `-- base_link
@@ -132,11 +185,9 @@ odom
 
 `odom -> base_link` is published by Gazebo diff-drive odometry. The fixed `base_link -> laser` and `base_link -> imu_link` transforms are published by `robot_state_publisher`.
 
-This phase does not publish `map -> odom`.
+During mapping, `slam_toolbox` publishes `map -> odom`. Do not add a second `map -> odom` publisher.
 
 ## Sensor Validation
-
-Start the simulation, then run:
 
 ```bash
 ros2 run robot_bringup validate_simulation.py
@@ -173,15 +224,14 @@ ros2 run robot_bringup send_test_velocity.py --ros-args -p linear_x:=0.1 -p dura
 - Robot does not spawn: make sure `xacro` is installed and the workspace was rebuilt/source-loaded.
 - `/scan` is missing with `use_scan_noise:=false`: check that `scan_relay.py` is running.
 - `/scan` is missing with `use_scan_noise:=true`: check that the `noise_injection` package built and that `/scan_raw` exists.
-- TF checks fail immediately after startup: wait a few seconds and rerun the validator.
+- `slam_toolbox` package not found: install `ros-humble-slam-toolbox`.
+- `/map` missing: confirm `mapping.launch.py` is running and the robot is moving.
 
 ## Current Limitations
 
-- No SLAM implementation.
+- No saved-map AMCL localisation or Nav2 navigation yet (Phase 5).
 - No EKF or IMU/wheel fusion.
 - No ICP odometry implementation.
-- No AMCL localization.
-- No Nav2 planning or autonomous navigation.
 - The robot model is intentionally simple and meant for quick sensor/TF bringup tests.
 
 ## Manual Verification Checklist
