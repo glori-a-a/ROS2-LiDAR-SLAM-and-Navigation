@@ -4,7 +4,7 @@ This ROS2 Humble workspace contains a small mobile-robot simulation bringup plus
 
 Phase 3 adds a working Gazebo Classic differential-drive robot simulation. SLAM, EKF, ICP odometry, AMCL, Nav2, and autonomous navigation are not implemented in this phase.
 
-## Package Responsibilities
+![Indoor LiDAR simulation demo](outputs/simulation_demo.gif)
 
 ### robot_bringup
 
