@@ -17,6 +17,7 @@ def generate_launch_description():
     robot_x = LaunchConfiguration("robot_x")
     robot_y = LaunchConfiguration("robot_y")
     robot_yaw = LaunchConfiguration("robot_yaw")
+    publish_odom_tf = LaunchConfiguration("publish_odom_tf")
 
     robot_description_file = PathJoinSubstitution([
         FindPackageShare("robot_bringup"),
@@ -25,7 +26,12 @@ def generate_launch_description():
     ])
 
     robot_description = ParameterValue(
-        Command([FindExecutable(name="xacro"), " ", robot_description_file]),
+        Command([
+            FindExecutable(name="xacro"), " ",
+            robot_description_file,
+            " publish_odom_tf:=",
+            publish_odom_tf,
+        ]),
         value_type=str,
     )
 
@@ -157,6 +163,11 @@ def generate_launch_description():
             "robot_yaw",
             default_value="0.0",
             description="Initial robot yaw angle in radians.",
+        ),
+        DeclareLaunchArgument(
+            "publish_odom_tf",
+            default_value="true",
+            description="Publish odom->base_link TF from Gazebo diff drive.",
         ),
         gzserver,
         gzclient,

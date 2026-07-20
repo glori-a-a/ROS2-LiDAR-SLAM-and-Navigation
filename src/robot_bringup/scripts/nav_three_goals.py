@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Send initial AMCL pose and three map-frame navigation goals via Nav2."""
 
 import math
 import sys
@@ -98,12 +97,12 @@ def main(args=None):
         raise SystemExit(1)
 
     node.publish_initial_pose()
-    time.sleep(2.0)
+    time.sleep(5.0)
 
     goals = [
-        (0.8, 0.0, 0.0),
-        (-1.2, 1.2, 1.57),
-        (1.5, -1.2, -0.8),
+        (0.6, 0.0, 0.0),
+        (0.4, 0.6, 1.2),
+        (-0.8, 0.5, 0.0),
     ]
 
     results = []

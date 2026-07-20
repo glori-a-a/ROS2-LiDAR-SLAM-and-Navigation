@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import UnlessCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -11,12 +11,14 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     headless = LaunchConfiguration("headless")
     use_scan_noise = LaunchConfiguration("use_scan_noise")
+    use_ekf = LaunchConfiguration("use_ekf")
     world = LaunchConfiguration("world")
     robot_x = LaunchConfiguration("robot_x")
     robot_y = LaunchConfiguration("robot_y")
     robot_yaw = LaunchConfiguration("robot_yaw")
     map_yaml = LaunchConfiguration("map")
     params_file = LaunchConfiguration("params_file")
+    publish_odom_tf = LaunchConfiguration("publish_odom_tf")
 
     simulation = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -34,7 +36,20 @@ def generate_launch_description():
             "robot_x": robot_x,
             "robot_y": robot_y,
             "robot_yaw": robot_yaw,
+            "publish_odom_tf": publish_odom_tf,
         }.items(),
+    )
+
+    ekf = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare("robot_bringup"),
+                "launch",
+                "ekf.launch.py",
+            ])
+        ]),
+        condition=IfCondition(use_ekf),
+        launch_arguments={"use_sim_time": use_sim_time}.items(),
     )
 
     nav2 = IncludeLaunchDescription(
@@ -94,6 +109,8 @@ def generate_launch_description():
             default_value="false",
             description="Enable LaserScan noise on /scan.",
         ),
+        DeclareLaunchArgument("use_ekf", default_value="false"),
+        DeclareLaunchArgument("publish_odom_tf", default_value="true"),
         DeclareLaunchArgument(
             "world",
             default_value=PathJoinSubstitution([
@@ -133,6 +150,7 @@ def generate_launch_description():
             description="Nav2 and AMCL parameter file.",
         ),
         simulation,
+        ekf,
         nav2,
         rviz,
     ])

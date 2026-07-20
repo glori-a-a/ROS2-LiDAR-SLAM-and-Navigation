@@ -1,4 +1,5 @@
 from launch import LaunchDescription
+from launch.conditions import IfCondition
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -10,6 +11,8 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     headless = LaunchConfiguration("headless")
     use_scan_noise = LaunchConfiguration("use_scan_noise")
+    use_ekf = LaunchConfiguration("use_ekf")
+    publish_odom_tf = LaunchConfiguration("publish_odom_tf")
     world = LaunchConfiguration("world")
     robot_x = LaunchConfiguration("robot_x")
     robot_y = LaunchConfiguration("robot_y")
@@ -32,7 +35,20 @@ def generate_launch_description():
             "robot_x": robot_x,
             "robot_y": robot_y,
             "robot_yaw": robot_yaw,
+            "publish_odom_tf": publish_odom_tf,
         }.items(),
+    )
+
+    ekf = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare("robot_bringup"),
+                "launch",
+                "ekf.launch.py",
+            ])
+        ]),
+        condition=IfCondition(use_ekf),
+        launch_arguments={"use_sim_time": use_sim_time}.items(),
     )
 
     slam_toolbox = Node(
@@ -62,6 +78,8 @@ def generate_launch_description():
             default_value="false",
             description="Route /scan through noise_injection instead of scan_relay.",
         ),
+        DeclareLaunchArgument("use_ekf", default_value="false"),
+        DeclareLaunchArgument("publish_odom_tf", default_value="true"),
         DeclareLaunchArgument(
             "world",
             default_value=PathJoinSubstitution([
@@ -96,5 +114,6 @@ def generate_launch_description():
             description="slam_toolbox parameter file.",
         ),
         simulation,
+        ekf,
         slam_toolbox,
     ])

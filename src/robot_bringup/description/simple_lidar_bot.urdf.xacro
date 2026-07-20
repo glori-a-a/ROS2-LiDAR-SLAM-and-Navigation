@@ -8,6 +8,7 @@
   <xacro:property name="wheel_y" value="0.19"/>
   <xacro:property name="wheel_x" value="0.0"/>
   <xacro:property name="wheel_z" value="0.07"/>
+  <xacro:arg name="publish_odom_tf" default="true"/>
 
   <link name="base_link">
     <inertial>
@@ -249,7 +250,7 @@
       <odometry_frame>odom</odometry_frame>
       <robot_base_frame>base_link</robot_base_frame>
       <publish_odom>true</publish_odom>
-      <publish_odom_tf>true</publish_odom_tf>
+      <publish_odom_tf>$(arg publish_odom_tf)</publish_odom_tf>
       <publish_wheel_tf>false</publish_wheel_tf>
     </plugin>
 

@@ -1,7 +1,12 @@
 icp_odometry:
   ros__parameters:
-    scan_topic: /scan
-    odom_topic: /odom
+    input_topic: /scan
+    output_topic: /icp_odom
     base_frame: base_link
     odom_frame: odom
-    publish_tf: true
+    max_iterations: 20
+    correspondence_distance: 0.45
+    convergence_translation: 0.001
+    convergence_rotation: 0.001
+    minimum_correspondences: 25
+    scan_stride: 2
