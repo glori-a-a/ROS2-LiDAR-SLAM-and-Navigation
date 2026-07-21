@@ -1,18 +1,27 @@
 # 2D LiDAR SLAM and Navigation
 
-ROS 2 Humble workspace: Gazebo diff-drive sim, `slam_toolbox` mapping, Nav2 on a saved map, wheel+IMU EKF (`robot_localization`), and C++ 2D ICP odometry.
+ROS 2 Humble workspace: Gazebo diff-drive simulation, optional LaserScan noise, `slam_toolbox` mapping, Nav2 on a saved map, wheel / wheel+IMU / wheel+IMU+ICP EKF fusion, and a custom C++ 2D ICP odometry node.
 
 ## Demo
 
-Simulation preview (offline render of the indoor world and scan pipeline):
+Simulation preview (offline render):
 
 ![Simulation preview](outputs/simulation_demo.gif)
 
-Nav2 on saved map `slam_navigation/maps/indoor_test.yaml` (live stack: map_server, AMCL, planner; scripted goal):
+Live Nav2 on saved map `slam_navigation/maps/indoor_test.yaml`:
 
-![Nav2 demo](outputs/nav2_demo.gif)
+![Nav2 demo](outputs/nav2_demo.gif) · [`outputs/nav2_demo.mp4`](outputs/nav2_demo.mp4)
 
-[`outputs/nav2_demo.mp4`](outputs/nav2_demo.mp4)
+## Custom vs third-party
+
+| Component | Origin |
+|-----------|--------|
+| Gazebo world, URDF/xacro, scan relay, validation scripts | **This repo** (`robot_bringup`) |
+| LaserScan noise node | **This repo** (`noise_injection`) |
+| 2D ICP library + node | **This repo** (`icp_odometry`, Eigen/SVD) |
+| EKF YAML + launch wiring, fusion modes | **This repo** (uses **ROS `robot_localization`** EKF node) |
+| Mapping / Nav2 launch wiring, tuned params | **This repo** (uses **`slam_toolbox`**, **`nav2_bringup`**) |
+| Trajectory / Nav2 benchmark scripts | **This repo** (`navigation_evaluation`) |
 
 ## Dependencies
 
@@ -27,7 +36,8 @@ sudo apt install \
   ros-humble-nav2-bringup \
   ros-humble-navigation2 \
   ros-humble-robot-localization \
-  ros-humble-teleop-twist-keyboard
+  ros-humble-teleop-twist-keyboard \
+  python3-matplotlib
 ```
 
 ## Build
@@ -36,88 +46,85 @@ sudo apt install \
 source /opt/ros/humble/setup.bash
 colcon build
 source install/setup.bash
+colcon test --packages-select icp_odometry
 ```
 
-## Simulation
+## Run simulation
 
 ```bash
-ros2 launch robot_bringup simulation.launch.py
 ros2 launch robot_bringup simulation.launch.py headless:=false
-ros2 launch robot_bringup simulation.launch.py use_scan_noise:=true
-```
-
-```bash
 ros2 run robot_bringup validate_simulation.py
-ros2 run robot_bringup send_test_velocity.py
 ```
 
-## Mapping
+Ground-truth pose (Gazebo `p3d`): `/ground_truth/odom` · Wheel odometry: `/odom`.
+
+## Mapping (SLAM Toolbox)
 
 ```bash
 ros2 launch slam_navigation mapping.launch.py headless:=false
 ros2 run robot_bringup mapping_explore.py
-```
-
-```bash
 ros2 run nav2_map_server map_saver_cli -f src/slam_navigation/maps/indoor_test
 ```
 
-With EKF publishing `odom`→`base_link`:
-
-```bash
-ros2 launch slam_navigation mapping.launch.py use_ekf:=true publish_odom_tf:=false
-```
-
-## Navigation
+## Navigation (AMCL + Nav2)
 
 ```bash
 ros2 launch slam_navigation navigation.launch.py headless:=false
-```
-
-Set **2D Pose Estimate** in RViz, then **Nav2 Goal**, or:
-
-```bash
 ros2 run robot_bringup nav_three_goals.py
 ```
 
-With EKF:
+EKF (disable Gazebo `odom→base_link` TF when EKF runs):
 
 ```bash
 ros2 launch slam_navigation navigation.launch.py use_ekf:=true publish_odom_tf:=false
-```
-
-EKF only (after sim is running):
-
-```bash
 ros2 launch robot_bringup ekf.launch.py fusion_mode:=wheel_imu
 ```
 
-`fusion_mode`: `wheel`, `wheel_imu`, `wheel_imu_icp` (ICP mode expects `/icp_odom`).
-
-## ICP odometry
+ICP:
 
 ```bash
 ros2 launch icp_odometry icp_odometry.launch.py
-colcon test --packages-select icp_odometry
 ```
 
-## Topics
+## Trajectory evaluation
 
-| Topic | Role |
-|-------|------|
-| `/scan_raw`, `/scan` | LiDAR (relay or `noise_injection`) |
-| `/imu/data` | IMU |
-| `/odom` | Wheel odometry |
-| `/odometry/filtered` | EKF fused odometry |
-| `/icp_odom` | Scan-matching odometry |
-| `/map` | Occupancy grid (mapping or map_server) |
+Ground truth: Gazebo **p3d** on `/ground_truth/odom`. Compare fused or wheel odometry with:
 
-## TF
-
-Mapping / navigation:
-
-```text
-map -> odom -> base_link -> laser, imu_link
+```bash
+source scripts/source_ws.sh
+ros2 launch robot_bringup simulation.launch.py headless:=true publish_odom_tf:=false
+ros2 launch robot_bringup ekf.launch.py fusion_mode:=wheel_imu
+ros2 run robot_bringup send_test_velocity.py --ros-args -p duration_sec:=15 -p linear_x:=0.15
+ros2 run navigation_evaluation trajectory_evaluator.py --ros-args \
+  -p estimate_topic:=/odometry/filtered -p fusion_mode:=wheel_imu -p lidar_mode:=clean \
+  -p duration_sec:=20 -p output_csv:=evaluations/results/trajectory_row.csv
 ```
 
-With default simulation (no EKF), Gazebo publishes `odom`→`base_link`. With `use_ekf:=true`, set `publish_odom_tf:=false` so the EKF owns that transform.
+Batch matrix (9 fusion × lidar cases):
+
+```bash
+bash scripts/run_trajectory_matrix.sh
+```
+
+## Full evaluation (optional)
+
+```bash
+bash scripts/run_full_eval_safe.sh
+```
+
+Results are **not** checked into git. Example **local** runs (reproducible with `scripts/run_trajectory_matrix.sh` + EKF):
+
+| fusion | lidar | n | ATE (m) | Notes |
+|--------|-------|---|---------|--------|
+| wheel | clean | 635 | 0.00025 | `/odom` vs `/ground_truth/odom` |
+| wheel_imu | clean | 391 | 0.0040 | `/odometry/filtered` vs GT |
+
+Example **wheel_imu / clean** relative error: ~4 mm over ~2 m straight-line test → **&lt;0.2% path error rate**.
+
+<!-- EVAL_RESULTS_START -->
+See table above; update after your own runs from `evaluations/results/trajectory_metrics.csv`.
+<!-- EVAL_RESULTS_END -->
+
+## ICP odometry convention
+
+Between consecutive scans, `runIcp(current, previous)` returns `T` mapping current scan coordinates into the previous scan frame. The node integrates **`global_pose = global_pose * T`** in SE(2), sets twist from the message timestamp delta, normalizes yaw, and fills pose/twist covariances from parameters.

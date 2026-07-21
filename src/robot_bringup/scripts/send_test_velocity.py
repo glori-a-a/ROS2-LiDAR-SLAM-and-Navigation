@@ -23,7 +23,7 @@ def main(args=None):
     node = rclpy.create_node("send_test_velocity")
 
     node.declare_parameter("linear_x", 0.15)
-    node.declare_parameter("duration_sec", 3.0)
+    node.declare_parameter("duration_sec", 3)
     node.declare_parameter("cmd_vel_topic", "/cmd_vel")
 
     linear_x = float(node.get_parameter("linear_x").value)

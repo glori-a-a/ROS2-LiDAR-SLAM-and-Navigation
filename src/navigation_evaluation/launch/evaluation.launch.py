@@ -1,12 +1,13 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, LogInfo
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     config_file = LaunchConfiguration("config_file")
-    run_name = LaunchConfiguration("run_name")
+    output_csv = LaunchConfiguration("output_csv")
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -16,13 +17,21 @@ def generate_launch_description():
                 "config",
                 "navigation_evaluation.yaml",
             ]),
-            description="Navigation evaluation configuration placeholder.",
+            description="Metrics node parameters.",
         ),
         DeclareLaunchArgument(
-            "run_name",
-            default_value="phase1_placeholder",
-            description="Name for a future navigation evaluation run.",
+            "output_csv",
+            default_value="evaluations/metrics.csv",
+            description="CSV output path.",
         ),
-        LogInfo(msg=["navigation_evaluation placeholder. config_file=", config_file]),
-        LogInfo(msg=["navigation_evaluation run_name=", run_name]),
+        Node(
+            package="navigation_evaluation",
+            executable="navigation_metrics.py",
+            name="navigation_metrics",
+            output="screen",
+            parameters=[
+                config_file,
+                {"output_csv": output_csv},
+            ],
+        ),
     ])

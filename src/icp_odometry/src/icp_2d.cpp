@@ -183,4 +183,38 @@ IcpResult runIcp(
   return result;
 }
 
+double normalizeYaw(double yaw)
+{
+  return std::atan2(std::sin(yaw), std::cos(yaw));
+}
+
+Eigen::Isometry2d isometryFromXYYaw(double x, double y, double yaw)
+{
+  Eigen::Isometry2d pose = Eigen::Isometry2d::Identity();
+  pose.linear() = Eigen::Rotation2Dd(yaw).matrix();
+  pose.translation() = Eigen::Vector2d(x, y);
+  return pose;
+}
+
+void xyYawFromIsometry(const Eigen::Isometry2d & pose, double & x, double & y, double & yaw)
+{
+  x = pose.translation().x();
+  y = pose.translation().y();
+  yaw = std::atan2(pose.linear()(1, 0), pose.linear()(0, 0));
+}
+
+Eigen::Isometry2d composePoses(
+  const Eigen::Isometry2d & parent,
+  const Eigen::Isometry2d & child)
+{
+  return parent * child;
+}
+
+Eigen::Isometry2d relativePose(
+  const Eigen::Isometry2d & from,
+  const Eigen::Isometry2d & to)
+{
+  return from.inverse() * to;
+}
+
 }  // namespace icp_odometry

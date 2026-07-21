@@ -11,6 +11,10 @@ using icp_odometry::findCorrespondences;
 using icp_odometry::hasConverged;
 using icp_odometry::rejectOutliers;
 using icp_odometry::runIcp;
+using icp_odometry::composePoses;
+using icp_odometry::isometryFromXYYaw;
+using icp_odometry::normalizeYaw;
+using icp_odometry::xyYawFromIsometry;
 
 static std::vector<Point2D> transformPoints(
   const std::vector<Point2D> & input,
@@ -101,4 +105,61 @@ TEST(Icp2d, ConvergenceThreshold)
   Eigen::Isometry2d b = Eigen::Isometry2d::Identity();
   b.translation() = Eigen::Vector2d(0.01, 0.0);
   EXPECT_TRUE(hasConverged(a, b, params));
+}
+
+TEST(Icp2d, ScanToPreviousTransformDirection)
+{
+  std::vector<Point2D> previous{{0.0, 0.0}, {2.0, 0.0}, {0.0, 1.0}};
+  Eigen::Isometry2d forward = isometryFromXYYaw(0.2, 0.0, 0.0);
+  const auto current = transformPoints(previous, forward.inverse());
+  IcpParameters params;
+  params.minimum_correspondences = 3;
+  const auto result = runIcp(current, previous, params);
+  ASSERT_TRUE(result.valid);
+  EXPECT_NEAR(result.transform.translation().x(), 0.2, 0.05);
+  EXPECT_NEAR(result.transform.translation().y(), 0.0, 0.05);
+  const Eigen::Isometry2d updated = composePoses(Eigen::Isometry2d::Identity(), result.transform);
+  double x = 0.0;
+  double y = 0.0;
+  double yaw = 0.0;
+  xyYawFromIsometry(updated, x, y, yaw);
+  EXPECT_NEAR(x, 0.2, 0.05);
+}
+
+TEST(Icp2d, PoseCompositionTwoSteps)
+{
+  const Eigen::Isometry2d step = isometryFromXYYaw(0.1, 0.0, 0.0);
+  const Eigen::Isometry2d composed = composePoses(step, step);
+  double x = 0.0;
+  double y = 0.0;
+  double yaw = 0.0;
+  xyYawFromIsometry(composed, x, y, yaw);
+  EXPECT_NEAR(x, 0.2, 1e-6);
+  EXPECT_NEAR(y, 0.0, 1e-6);
+}
+
+TEST(Icp2d, MultiStepIcpTranslation)
+{
+  std::vector<Point2D> previous{{0.0, 0.0}, {2.0, 0.0}, {0.0, 1.0}};
+  Eigen::Isometry2d global = Eigen::Isometry2d::Identity();
+  IcpParameters params;
+  params.minimum_correspondences = 3;
+  for (int step = 0; step < 3; ++step) {
+    const Eigen::Isometry2d forward = isometryFromXYYaw(0.1, 0.0, 0.0);
+    const auto current = transformPoints(previous, forward.inverse());
+    const auto result = runIcp(current, previous, params);
+    ASSERT_TRUE(result.valid) << "step=" << step;
+    global = composePoses(global, result.transform);
+    previous = current;
+  }
+  double x = 0.0;
+  double y = 0.0;
+  double yaw = 0.0;
+  xyYawFromIsometry(global, x, y, yaw);
+  EXPECT_NEAR(x, 0.3, 0.08);
+}
+
+TEST(Icp2d, NormalizeYaw)
+{
+  EXPECT_NEAR(normalizeYaw(3.5 * M_PI), normalizeYaw(-0.5 * M_PI), 1e-6);
 }

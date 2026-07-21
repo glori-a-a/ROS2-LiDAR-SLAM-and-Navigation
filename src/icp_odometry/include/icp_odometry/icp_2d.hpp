@@ -64,4 +64,18 @@ IcpResult runIcp(
   const std::vector<Point2D> & target,
   const IcpParameters & params);
 
+double normalizeYaw(double yaw);
+
+Eigen::Isometry2d isometryFromXYYaw(double x, double y, double yaw);
+
+void xyYawFromIsometry(const Eigen::Isometry2d & pose, double & x, double & y, double & yaw);
+
+Eigen::Isometry2d composePoses(
+  const Eigen::Isometry2d & parent,
+  const Eigen::Isometry2d & child);
+
+Eigen::Isometry2d relativePose(
+  const Eigen::Isometry2d & from,
+  const Eigen::Isometry2d & to);
+
 }  // namespace icp_odometry
